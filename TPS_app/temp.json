@@ -1,0 +1,28 @@
+{
+    "Teams_Name": "MUSADIN",
+    "Teams_Sponsor": "SANK"
+}
+
+
+{
+    "Players_Username" : "naveen1240",
+    "Players_Password" : "naveen",
+    "Players_Name" : "Naveen Kumar yeddula",
+    "Players_Role" : 1,
+    "Players_ContactNo" : "7730821964",
+    "idTeams" : 1
+}
+
+{
+    "Location_Name": "Central Park",
+    "Location_City": "Bangalore",
+    "Location_Booking" : 0
+}
+
+{
+    "Teams1_ID": 1,
+    "Teams2_ID": 2,
+    "match_date": 2022-07-22 23:32:33,
+    "idLocations" : 1,
+    "Result" : 0
+}
