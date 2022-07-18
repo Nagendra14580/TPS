@@ -1,23 +1,24 @@
 from django.db import models
-from datetime import datetime
+from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.base_user import BaseUserManager
 from django.utils.translation import gettext as _
 
 
 class Teams(models.Model):
-    idTeams = models.AutoField(primary_key=True)
-    teams_name = models.CharField(max_length = 50)
+    teams_name = models.CharField(max_length = 50, unique = True)
     teams_sponsor = models.CharField(max_length = 20)
-    teams_players = models.CharField(max_length = 50, default='')
+    team_capitan = models.CharField(max_length = 20, unique = True, default='')
+    teams_players = models.CharField(max_length = 50, default='', blank=True)
     is_approved = models.BooleanField('Is Approved', default = False)
     creation_date = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.teams_Name
+        return self.teams_name
 
     class Meta:
+        unique_together = ["teams_name", "teams_sponsor"]
         db_table = 'Teams'
 
 class CustomUserManager(BaseUserManager):
@@ -53,11 +54,10 @@ class CustomUserManager(BaseUserManager):
 
 class TPS_Users(AbstractUser):
     username = None
-    idPlayers = models.AutoField(primary_key=True)
     email = models.EmailField(_('email address'), unique=True)
     name = models.CharField(max_length = 50)
     contactNo = models.CharField(max_length = 20)
-    idTeams = models.CharField(max_length = 20)
+    teams_name = models.CharField(max_length = 20, default = " ")
     is_capitan = models.BooleanField(default=False, blank=True, null=True)
     creation_date = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now_add=True)
@@ -77,6 +77,7 @@ class Locations(models.Model):
     location_name = models.CharField(max_length = 50)
     location_city = models.CharField(max_length = 20)
     isBooked =  models.BooleanField('Is Booked', default = False)
+    booking_date = models.DateTimeField(default = timezone.now)
     creation_date = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now_add=True)
 
@@ -88,12 +89,9 @@ class Locations(models.Model):
 
 class Schedules(models.Model):
     idSchedule = models.AutoField(primary_key=True)
-    # Teams1_ID = models.ForeignKey(Teams, default = 1, on_delete=models.CASCADE, related_name='Teams1_ID')
-    # Teams2_ID = models.ForeignKey(Teams, default = 1, on_delete=models.CASCADE, related_name='Teams2_ID')
-    teams1_ID = models.IntegerField()
-    teams2_ID = models.IntegerField()
+    teams1_name = models.CharField(max_length = 100, default='')
+    teams2_name = models.CharField(max_length = 100, default='')
     match_date = models.TextField(max_length = 20, default='')
-    # idLocations = models.ForeignKey(Locations, default = 1, on_delete=models.CASCADE)
     idLocations = models.IntegerField()
     result = models.IntegerField(default = 0)
     creation_date = models.DateTimeField(auto_now_add=True)

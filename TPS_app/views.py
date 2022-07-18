@@ -1,7 +1,3 @@
-import email
-import requests
-import string, random
-
 from django.db.models import Q
 from django.contrib.auth import authenticate
 from django.views.decorators.csrf import csrf_exempt
@@ -21,7 +17,6 @@ from TPS_app.serializers import TPSUserResponseSerializer
 from TPS_app.custom_permissions import IsAdmin, IsCapitan
 from TPS_app.common import Common
 
-@csrf_exempt
 @api_view(["GET"])
 @permission_classes((AllowAny,))
 def login(request):
@@ -30,7 +25,7 @@ def login(request):
     if email is None or password is None:
         return Response({'error': 'Please provide both username and password'},
                         status= status.HTTP_400_BAD_REQUEST)
-    user = authenticate(email=email, password=password)
+    user = authenticate(email = email, password = password)
     if not user:
         return Response({'error': 'Invalid Credentials'},
                         status= status.HTTP_404_NOT_FOUND)
@@ -50,7 +45,6 @@ def create_user(request):
     validated_data = {}
     validated_data['email'] = request.data['email']
     validated_data['password'] = common.generate_random_password()
-    print(validated_data)
     tps_reg_ser = TPSUserRegistrationRequsetSerializer(data = validated_data)
     valid = tps_reg_ser.is_valid(raise_exception=True)
 
@@ -67,25 +61,71 @@ def create_user(request):
         return Response(response, status=status_code)   
     return Response(tps_reg_ser.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(["PATCH"])
+@permission_classes([And(IsAuthenticated, IsAdmin)])
+def promote_player(request):
+    try:
+        player = TPS_Users.objects.get(email = request.data['email'])
+        if not player.is_capitan:
+            player.is_capitan = True
+            player.save()
+            status_code = status.HTTP_200_OK
+            token, _ = Token.objects.get_or_create(user=player)
+            response = {
+                        'success': True,
+                        'statusCode': status_code,
+                        'token' : token.key,
+                        'message': 'Password Changed Successfully!',
+                        'data': TPSUserResponseSerializer(player).data
+                        }
+            return Response(response, status = status_code)
+    except TPS_Users.DoesNotExist:
+        return Response({'msg':'No Players Found', 'staus':status.HTTP_404_NOT_FOUND})
+
 @csrf_exempt
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 def change_password(request):
     try:
         player = TPS_Users.objects.get(email = request.data['email'])
+        player.set_password(request.data['password'])
+        player.is_active = True
+        player.save()
+        status_code = status.HTTP_200_OK
+        token, _ = Token.objects.get_or_create(user=player)
+        response = {
+                    'success': True,
+                    'statusCode': status_code,
+                    'token' : token.key,
+                    'message': 'Password Changed Successfully!',
+                    'data': TPSUserResponseSerializer(player).data
+                    }
+        return Response(response, status = status_code)
     except TPS_Users.DoesNotExist:
         return Response({'msg':'No Players Found', 'staus':status.HTTP_404_NOT_FOUND})
-    serializers = TPSUserResponseSerializer(player, request.data, partial=True)
-    if serializers.is_valid():
-        serializers.save()
-        status_code = status.HTTP_200_OK
-        response = {
-                'success': True,
-                'statusCode': status_code,
-                'message': 'Password Changed Successfully!',
-                'data': serializers.data
-            }
-        return Response(response, status = status_code)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_players(request):
+    common = Common()
+    if request.method == 'GET':
+        if 'email' in request.data.keys():
+            try:
+                player = TPS_Users.objects.get(email = request.data['email'])
+                serializers = TPSUserResponseSerializer(player)
+                response = common.return_response(True, status.HTTP_200_OK, 
+                                                 'Teams Data', serializers.data)
+                return Response(response, status = status.HTTP_200_OK)
+            except TPS_Users.DoesNotExist:
+                response = common.return_response(False, status.HTTP_404_NOT_FOUND, 
+                                                 'No Teams Found')
+                return Response(response, status = status.HTTP_404_NOT_FOUND)
+        else:
+            players = TPS_Users.objects.all()
+            serializers = TPSUserResponseSerializer(players, many=True)
+            response = common.return_response(True, status.HTTP_200_OK, 
+                                                 'Teams Data', serializers.data)
+            return Response(response, status = status.HTTP_200_OK)
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
@@ -108,13 +148,13 @@ def update_profile(request):
 
 @csrf_exempt
 @api_view(['GET', 'POST','PUT','PATCH','DELETE'])
-@permission_classes([And(IsAuthenticated, Or(IsAdmin, IsCapitan))])
+@permission_classes([IsAuthenticated])
 def teams_view(request):
     common = Common()
     if request.method == 'GET':
-        if 'idTeams' in request.data.keys():
+        if 'teams_name' in request.data.keys():
             try:
-                team = Teams.objects.get(idTeams = request.data['idTeams'])
+                team = Teams.objects.get(teams_name = request.data['teams_name'])
                 serializers = TeamsSerializer(team)
                 response = common.return_response(True, status.HTTP_200_OK, 
                                                  'Teams Data', serializers.data)
@@ -131,7 +171,9 @@ def teams_view(request):
             return Response(response, status = status.HTTP_200_OK)
     elif request.method == 'POST':
         data = request.data
-        data['teams_players'] = request.user.idPlayers
+        if not request.user.is_staff:
+            data['teams_players'] = request.user.email
+            data['team_capitan'] = request.user.email
         serializers = TeamsSerializer(data = request.data)
         if serializers.is_valid():
             serializers.save()
@@ -143,9 +185,8 @@ def teams_view(request):
                                                  serializers.errors, '')
         return Response(response, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'PUT':
-        print(request.data)
         try:
-            team = Teams.objects.get(idTeams = request.data['idTeams'])
+            team = Teams.objects.get(idTeams = request.data['teams_name'])
         except Teams.DoesNotExist:
             response = common.return_response(False, status.HTTP_404_NOT_FOUND, 
                                               'pass idTeams', '')
@@ -164,7 +205,7 @@ def teams_view(request):
     elif request.method == 'PATCH':
         print(request.data)
         try:
-            team = Teams.objects.get(idTeams = request.data['idTeams'])
+            team = Teams.objects.get(teams_name = request.data['teams_name'])
         except Teams.DoesNotExist:
             response = common.return_response(False, status.HTTP_404_NOT_FOUND, 
                                               'pass idTeams', '')
@@ -181,8 +222,8 @@ def teams_view(request):
                                                  serializers.errors, '')
         return Response(response, status=status.HTTP_400_BAD_REQUEST)
     elif request.method == 'DELETE':
-        if 'idTeams' in request.data.keys():
-            Teams.objects.filter(idTeams = request.data['idTeams']).delete()
+        if 'teams_name' in request.data.keys():
+            Teams.objects.filter(idTeams = request.data['teams_name']).delete()
             response = common.return_response(True, status.HTTP_204_NO_CONTENT, 
                                              'Teams Data Deleted', '')
             return Response(response, status=status.HTTP_204_NO_CONTENT)
@@ -193,7 +234,7 @@ def teams_view(request):
 
 @csrf_exempt
 @api_view(['GET', 'POST','PUT','PATCH','DELETE'])
-@permission_classes(And(IsAuthenticated, IsAdmin))
+@permission_classes([And(IsAuthenticated, IsAdmin)])
 def locations_view(request):
     common = Common()
     if request.method == 'GET':
@@ -267,7 +308,7 @@ def locations_view(request):
 
 @csrf_exempt
 @api_view(['POST', 'PUT', 'PATCH', 'DELETE'])
-@permission_classes(And(IsAuthenticated, IsAdmin))
+@permission_classes([And(IsAuthenticated, IsAdmin)])
 def schedules_view(request):
     common = Common()
     if request.method == 'GET':
@@ -373,11 +414,12 @@ def get_schedules(request):
 @api_view(['GET'])
 def get_team_members(request):
     common = Common()
-    if 'idPlayers' in request.data.keys(): 
+    if 'email' in request.data.keys(): 
         try:
-            player = TPS_Users.objects.get(idPlayers = request.data['idPlayers'])
+            player = TPS_Users.objects.get(email = request.data['email'])
             serializers = TPSUserResponseSerializer(player)
-            team_players = TPS_Users.objects.filter(idTeams=serializers.data['idTeams']).values('idPlayers','Players_Name')
+            team_players = TPS_Users.objects.filter(
+                    teams_name = serializers.data['teams_name']).values('email','Players_Name')
             if len(team_players.values()) > 0:
                 response = common.return_response(True, status.HTTP_200_OK, 
                                                  'Team Details Fetched', team_players.values())
@@ -400,24 +442,22 @@ def get_team_members(request):
 @permission_classes(And(IsAuthenticated, IsCapitan))
 def add_team_players(request):
     common = Common()
-    captain_id  = request.data['idPlayers']
+    captain_email  = request.data['email']
     team_members = request.data['team_members']
-    team_id = common.get_team_id(captain_id)
-    print("the teams_id", team_id)
+    team_name = common.get_team_name(captain_email)
     for member in team_members:
-        team_count = TPS_Users.objects.filter(idTeams = team_id).count()
-        team = Teams.object.get(idTeams = team_id)
-        print("the team count is ",team_count)
+        team_count = TPS_Users.objects.filter(teams_name = team_name).count()
+        team = Teams.object.get(teams_name = team_name)
         if team_count < 15 :
-            player = TPS_Users.objects.get(idPlayers = member)
-            player.idTeams = team_id
+            player = TPS_Users.objects.get(email = member)
+            player.team_name = team_name
             team.teams_players = team.teams_players + ","+ member
             team_serializers = TeamsSerializer(team)
             tps_serializers = TPSUserResponseSerializer(player)
             if tps_serializers.is_valid():
                 serializers.save()
                 team_serializers.save()
-                team_count = TPS_Users.objects.filter(idTeams = team_id).count()
+                team_count = TPS_Users.objects.filter(teams_name = team_name).count()
         else:
             response = common.return_response(False, status.HTTP_304_NOT_MODIFIED, 
                                                  'Players Excced 15')
@@ -433,13 +473,13 @@ def add_team_players(request):
 @permission_classes(And(IsAuthenticated, IsCapitan))
 def remove_team_players(request):
     common = Common()
-    captain_id  = request.data['idPlayers']
+    captain_email  = request.data['email']
     team_members = request.data['team_members']
-    team_id = common.get_team_id(captain_id)
-    team = Teams.object.get(idTeams = team_id)
+    teams_name = common.get_team_id(captain_email)
+    team = Teams.object.get(teams_name = teams_name)
     for member in team_members:
-        player = TPS_Users.objects.get(idPlayers = member)
-        player.idTeams = 1
+        player = TPS_Users.objects.get(email = member)
+        player.teams_name = 'Terras'
         team.teams_players = team.teams_players.replace(member,'')
         team.teams_players = team.teams_players.replace(',,',',')
         serializers = TPSUserResponseSerializer(player)
@@ -457,8 +497,8 @@ def remove_team_players(request):
 @permission_classes(And(IsAuthenticated, IsAdmin))
 def approve_team(request):
     common = Common()
-    team_id  = request.data['idTeams']
-    team = Teams.objects.get(idTeams = team_id)
+    team_name  = request.data['teams_name']
+    team = Teams.objects.get(team_name = team_name)
     team_serializer = TeamsSerializer(team)
     team_members = team_serializer.data.team_members
     if len(team_members.split(',')) < 15:

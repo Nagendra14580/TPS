@@ -17,11 +17,10 @@ class Common:
         random.shuffle(password)
         return "Terras_{0}".format("".join(password))
 
-    def get_team_id(self, player_id):
-        print("Player id",player_id)
-        player = TPS_Users.objects.get(idPlayers = player_id)
+    def get_team_name(self, player_mail):
+        player = TPS_Users.objects.get(email = player_mail)
         serializers = TPSUserResponseSerializer(player)
-        return serializers.data['idTeams']
+        return serializers.data['teams_name']
 
     def check_capitan(self, player_id):
         player_count = TPS_Users.objects.filter(Q(idPlayers = player_id) & Q(Players_Role = 2)).count()
