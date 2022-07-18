@@ -40,7 +40,35 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'TPS_app',
     'rest_framework',
+    'django_advanced_password_validation',
     'rest_framework.authtoken'
+]
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django_advanced_password_validation.advanced_password_validation.ContainsDigitsValidator',
+        'OPTIONS': {
+            'min_digits': 1
+        }
+    },
+    {
+        'NAME': 'django_advanced_password_validation.advanced_password_validation.ContainsUppercaseValidator',
+        'OPTIONS': {
+            'min_uppercase': 1
+        }
+    },
+    {
+        'NAME': 'django_advanced_password_validation.advanced_password_validation.ContainsLowercaseValidator',
+        'OPTIONS': {
+            'min_lowercase': 1
+        }
+    },
+    {
+        'NAME': 'django_advanced_password_validation.advanced_password_validation.ContainsSpecialCharactersValidator',
+        'OPTIONS': {
+            'min_characters': 1
+        }
+    }
 ]
 
 AUTH_USER_MODEL = 'TPS_app.TPS_Users'

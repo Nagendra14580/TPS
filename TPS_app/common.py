@@ -1,12 +1,13 @@
 import string, random
 
 from TPS_app.models import Teams, TPS_Users, Locations, Schedules
+from TPS_app.serializers import TPSUserResponseSerializer
 
 class Common:
     def __init__(self) -> None:
         pass
 
-    def generate_random_password():
+    def generate_random_password(self):
         characters = list(string.ascii_letters + string.digits + "!@#$%^&*()")
         length = 8
         random.shuffle(characters)
@@ -14,21 +15,25 @@ class Common:
         for i in range(length):
             password.append(random.choice(characters))
         random.shuffle(password)
-        return "Terras_".join(password)
+        return "Terras_{0}".format("".join(password))
 
-    def get_team_id(player_id):
+    def get_team_id(self, player_id):
         print("Player id",player_id)
-        player = Players.objects.get(idPlayers = player_id)
-        serializers = PlayersSerializer(player)
+        player = TPS_Users.objects.get(idPlayers = player_id)
+        serializers = TPSUserResponseSerializer(player)
         return serializers.data['idTeams']
 
-    def check_capitan(player_id):
-        player_count = Players.objects.filter(Q(idPlayers = player_id) & Q(Players_Role = 2)).count()
+    def check_capitan(self, player_id):
+        player_count = TPS_Users.objects.filter(Q(idPlayers = player_id) & Q(Players_Role = 2)).count()
         if player_count > 0:
             return True
         else:
             return False
     
+    def get_player_id(self, username):
+        player = TPS_Users.objects.filter(email=username).values('idPlayers')[0]
+        return player
+
     def return_response(self, success, statusCode, message, data=''):
         response = {}
         response['success'] = success
