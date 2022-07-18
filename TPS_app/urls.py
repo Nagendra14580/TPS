@@ -3,10 +3,13 @@ from django.urls import path
 from TPS_app import views
 
 urlpatterns = [
-    path('teams/', views.teams_view),
-    path('players/', views.players_view),
-    path('locations/', views.locations_view),
-    path('schedules/', views.schedules_view),
-    path('get_schedules/', views.get_schedules),
-    path('get_team_members/', views.get_team_members),
+    path("login/", views.login, name="login"),
+    path('teams/', views.teams_view, name="teams"),
+    path('locations/', views.locations_view, name="locations"),
+    path('schedules/', views.schedules_view, name="schedules"),
+    path('create_user/', views.create_user, name="Create user"),
+    path('get_schedules/', views.get_schedules, name="get_schedules"),
+    path('get_team_members/', views.get_team_members, name="get_team_members"),
+    path('add_team_players/', views.add_team_players, name="add_team_players"),
+    path('remove_team_players/', views.remove_team_players, name="remove_team_players")
 ]

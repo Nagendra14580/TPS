@@ -1,23 +1,35 @@
 from rest_framework import serializers
-from TPS_app.models import Teams, Players, Locations, Schedules
+from rest_framework.authtoken.models import Token
+from TPS_app.models import Teams, TPS_Users, Locations, Schedules
+from rest_framework_simplejwt.tokens import RefreshToken
 
 class TeamsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teams
-        fields = ['idTeams','Teams_Name','Teams_Sponsor']
+        fields = ['idTeams','teams_name','teams_sponsor','teams_players','is_approved']
 
-class PlayersSerializer(serializers.ModelSerializer):
+class TPSUserResponseSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Players
-        fields = ['idPlayers','Players_Username','Players_Password','Players_Name',
-                  'Players_Role','Players_ContactNo','idTeams']
+        model = TPS_Users
+        fields = ['idPlayers','email','password','name','email','ContactNo','idTeams',
+                  'is_capitan','is_active']
 
+class TPSUserRegistrationRequsetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TPS_Users
+        fields = ('email','password')
+
+    def create(self, validated_data):
+        auth_user = TPS_Users.objects.create_user(**validated_data)
+        return auth_user
+        
 class LocationsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Locations
-        fields = ['idLocations','Location_Name','Location_City','Location_Booking']
+        fields = ['idLocations','location_name','location_city','isBooked']
 
 class SchedulesSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedules
         fields = ['idSchedule','Teams1_ID','Teams2_ID','Match_date','idLocations','Result']
+
